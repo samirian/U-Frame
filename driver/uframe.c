@@ -7,7 +7,7 @@
 #include <linux/cdev.h>
 #include <linux/usb.h>
 #include <linux/errno.h>
-
+#include <linux/slab.h>
 #include "uframe.h"
 #include "uframechar.h"
 

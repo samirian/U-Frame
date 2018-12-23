@@ -1,50 +1,7 @@
 import Communication
 import threading
 import time
-
-
-# 0 -> control (SETUP) endpoint
-# 1 -> IN endpoint
-# 0 -> OUT endpoint
-
-CONTROL = "Control"
-BULK = "Bulk"
-INTERRUPT = "Interrupt"
-ISOCHRONOUS = "Isochronous"
-
-IN0 = 1
-IN1 = 11
-IN2 = 21
-IN3 = 31
-IN4 = 41
-IN5 = 51
-IN6 = 61
-IN7 = 71
-IN8 = 81
-IN9 = 91
-IN10 = 101
-IN11 = 111
-IN12 = 121
-IN13 = 131
-IN14 = 141
-IN15 = 151
-
-OUT0 = 0
-OUT1 = 10
-OUT2 = 20
-OUT3 = 30
-OUT4 = 40
-OUT5 = 50
-OUT6 = 60
-OUT7 = 70
-OUT8 = 80
-OUT9 = 90
-OUT10 = 100
-OUT11 = 110
-OUT12 = 120
-OUT13 = 130
-OUT14 = 140
-OUT15 = 150
+from constants import *
 
 IOCTL_INTERRUPT_INTERVAL = 0
 IOCTL_INTERRUPT_LENGTH = 0
@@ -116,7 +73,8 @@ class USB:
 	
 	
 def callback1(data):
-	print("2")
+	print (data)
+	print('-----------------------')
 
 
 def callback2(data):
@@ -124,10 +82,12 @@ def callback2(data):
 
 
 if __name__ == "__main__":
-	usb = USB(10, 10, 15)
-	usb.writeBulk(OUT15, 8, 65)
-	print(usb.readBulk(IN1))
+	usb = USB('17ef', '6078', '0')
+	#usb.writeBulk(OUT15, 8, 65)
+	#print(usb.readBulk(IN1))
 	thread1 = usb.readInterruptHandler(IN1, callBackFunction = callback1)
-	thread2 = usb.readInterruptHandler(IN1, callBackFunction = callback2)
+	#thread2 = usb.readInterruptHandler(IN1, callBackFunction = callback2)
+	#for i in range(10000000):
+	#	print(usb.readInterrupt(IN1))
 
 	time.sleep(2)

@@ -7,25 +7,40 @@ import threading
 import time
 from helper import Helper
 from config import *
+from constants import *
 
 
 class Communication:
-    def __init__(self, path):
-        if os.path.exists(path):
-            self.path = path
+    def __init__(self, vid, pid, interface, endpoint, endpoint_type):
+        self.path = "/dev/U-Frame/" + vid + "/" + pid + "/" + interface + "/" + endpoint_type + "/" + "{0:03}".format(endpoint)
+        
+        if os.path.exists(self.path):
+            buffert = array.array("i", struct.pack("iiiii", 0, 0, 0, 0, 0))
+            buffer = self.device_control(3, buffert)
+            self.type = buffer[0]
+            print(self.type)
+            self.direction = buffer[1]
+            print(self.direction)
+            self.endpoint_address = buffer[2]
+            print(self.endpoint_address)
+            self.interval = buffer[3]
+            print(self.interval)
+            self.buffer_size = buffer[4]
+            print(self.buffer_size)
         else:
             raise ValueError("Path does not exist")
+
 
     def send(self, data):
         file = open(self.path, "w")
         file.write(data)
         file.close()
 
-    def receive(self, size=0):
+    def receive(self, size=16):
         try:
             file = open(self.path, "r")
             fd = file.fileno()
-            data = os.read(fd, 16)
+            data = os.read(fd, size)
             file.close()
             return data
         except Exception as e:
@@ -40,27 +55,15 @@ class Communication:
 
 
 class Bulk(Communication):
-    def __init__(self, vid, pid, interface, endpoint, endpoint_type="Bulk"):
-        self.path = "/home/sayed/dev/" + vid + "/" + pid + "/" + interface + "/" + endpoint_type + "/" + "{0:03}".format(
-            endpoint)
-        Communication.__init__(self, self.path)
-        buffert = array.array("i", struct.pack("iiiii", 0, 0, 0, 0, 0))
-        buffer = self.device_control(3, buffert)
-        self.type = buffer[0]
-        print(self.type)
-        self.direction = buffer[1]
-        print(self.direction)
-        self.endpoint_address = buffer[2]
-        print(self.endpoint_address)
-        self.interval = buffer[3]
-        print(self.interval)
-        self.buffer_size = buffer[4]
-        print(self.buffer_size)
-
-
-class Interrupt(Bulk):
     def __init__(self, vid, pid, interface, endpoint):
-        Bulk.__init__(self, vid, pid, interface, endpoint, "Interrupt")
+        endpoint_type = BULK
+        Communication.__init__(self, vid, pid, interface, endpoint, endpoint_type)
+
+
+class Interrupt(Communication):
+    def __init__(self, vid, pid, interface, endpoint):
+        endpoint_type = INTERRUPT
+        Communication.__init__(self, vid, pid, interface, endpoint, endpoint_type)
 
     def write_interrupt_handler(self, callback_function=None):
         thread = threading.Thread(target=self.__write_interrupt_caller, args=(self.path, self.interval, callback_function,))
@@ -87,8 +90,7 @@ class Interrupt(Bulk):
 
 class Control(Communication):
     def __init__(self, vid, pid, interface, endpoint):
-        self.path = "/home/sayed/dev/" + vid + "/" + pid + "/" + interface + "/" + "Control" + "/" + "{0:03}".format(
-            endpoint)
+        endpoint_type = CONTROL
         Communication.__init__(self, self.path)
 
     def form_request_packet(self, request, request_type, value, index, size):
@@ -107,5 +109,3 @@ class Control(Communication):
     def receive(self, request, request_type, value, index, size, data):
         buffer = array.array("c", struct.pack("BBHHH{width}s".format(width=size), request, request_type, value, index, size, data))
         return Communication.device_control(self, IOCTL_CONTROL_READ, buffer)[8:]
-
-

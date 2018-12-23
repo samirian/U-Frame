@@ -3,11 +3,7 @@ from bitarray import bitarray
 import os
 import struct
 import array
-
-
-OUT = 0
-IN = 1
-
+from constants import *
 
 
 class communication:
@@ -15,8 +11,8 @@ class communication:
 		self.vid = vid
 		self.pid = pid
 		self.interface = interface
-		self.root = "/home/samir/Documents/dev/uframe" + "/" + self.vid + "/" + self.pid + "/" + self.interface + "/"
-		self.interruptWordLength = 0
+		self.root = "/dev/U-Frame/" + self.vid + "/" + self.pid + "/" + self.interface + "/"
+		self.interruptWordLength = 8
 
 	def checkForEndPointNodes(self, endPoint):
 		for OUTn in range(0, 150, 10):
@@ -45,13 +41,16 @@ class communication:
 	def recive(self, endPoint, INn, request = None, requestType = None, value = None, index = None, size = None, data = None, operation = 1):
 
 		fd = self.getPath(endPoint, INn)
-		print(fd)
 		if request == None:
 			if os.path.exists(fd):
+				array = []
 				file = open(fd, "r")
-				data = file.read(self.interruptWordLength)
+				for i in range(self.interruptWordLength):
+					array.append(ord(file.read(1)))
+				#data = file.read(self.interruptWordLength)
 				file.close()
-				return data
+				#return data
+				return array
 			
 			else:
 				print("no such endpoint ,printing available nodes :")
@@ -90,4 +89,3 @@ class communication:
 		
 	def formRequestPacket(self, request, requestType, value, index, size):
 		return bitarray("{0:08b}".format(request) + "{0:08b}".format(requestType) + "{0:<016b}".format(value) + "{0:<016b}".format(index) + "{0:<016b}".format(size)).tobytes()
-

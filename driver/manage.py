@@ -93,9 +93,5 @@ if deviceDetails != "":
 					break
 		counter += 1
 
-
 else :
 	print ("device is not connected")
-
-
-

@@ -11,7 +11,7 @@ type=$4
 direction=$5
 minor=$6
 
-dir="/home/samir/Documents/dev/uframe/"$vid"/"$pid"/"$interface"/"
+dir="/dev/U-Frame/"$vid"/"$pid"/"$interface"/"
 mkdir -p $dir
 
 major=`awk "\\$2==\"$module\" {print \\$1}" /proc/devices`

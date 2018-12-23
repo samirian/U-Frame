@@ -5,6 +5,7 @@
 #include <linux/errno.h>
 #include <linux/usb.h>
 #include <linux/types.h>
+#include <linux/slab.h>
 
 #include "uframe.h"
 #include "uframechar.h"
