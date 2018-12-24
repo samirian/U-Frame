@@ -3,7 +3,7 @@ from bitarray import bitarray
 import os
 import struct
 import array
-from constants import *
+from .constants import *
 
 
 class communication:

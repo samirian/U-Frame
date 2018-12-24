@@ -1,7 +1,7 @@
-import Communication
+from . import Communication
 import threading
 import time
-from constants import *
+from .constants import *
 
 IOCTL_INTERRUPT_INTERVAL = 0
 IOCTL_INTERRUPT_LENGTH = 0
