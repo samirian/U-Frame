@@ -80,7 +80,7 @@ class communication:
 			file.close()
 		
 		else:
-		    	print("no such endpoint ,printing available nodes :")
+			print("no such endpoint ,printing available nodes :")
 			self.availableEndpoints(endPoint)
 			
 		
