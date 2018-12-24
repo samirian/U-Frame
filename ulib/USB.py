@@ -1,4 +1,4 @@
-from . import Communication
+from .Communication import communication
 import threading
 import time
 from .constants import *
@@ -13,7 +13,7 @@ class USB:
 		self.vid = vid
 		self.pid = pid
 		self.interface = interface
-		self.comm = Communication.communication(vid, pid, interface)
+		self.comm = communication(vid, pid, interface)
 		#self.interruptInterval = self.comm.ioctl(vid, pid, interface, 0, 0, 0, 0, 0, 0, IN0, IOCTL_INTERRUPT_INTERVAL)
 		self.interruptInterval = 500
 
