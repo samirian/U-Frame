@@ -1,2 +1,6 @@
 
 *.pyc
+
+driver/deviceDiscriptor\.txt
+
+driver/endpoints\.txt
