@@ -43,51 +43,56 @@ int uframe_release(struct inode *inode, struct file *filp)
     return 0;
 }
 
-ssize_t uframe_read(struct file *filp, char __user *buff, size_t count, loff_t *offp)
+ssize_t uframe_read(struct file *filp, char __user *u_buffer, size_t count, loff_t *offp)
 {
-    struct uframe_endpoint *ep;
-    int retval = 0;
-    ep = filp->private_data;
-    
-    printk(KERN_INFO"%s: READ From endpoint %d, type %d, dir %d\n",DEVICE_NAME,ep->epaddr, ep->type, ep->dir);
+	struct uframe_endpoint *ep;
+	int retval = 0;
+	int d_size;
+	ep = filp->private_data;
 
-    if(!count)
-	return 0;
-    
+	printk(KERN_INFO"%s: attempt %d : READ From endpoint %d, type %d, dir %d\n",DEVICE_NAME, counter,ep->epaddr, ep->type, ep->dir);
+
+	if(!count)
+		return 0;
+	printk(KERN_INFO "%s: attempt %d : --------------starting transfer--------------\n", DEVICE_NAME, counter);
+	d_size = min(ep->buffer_size ,(int) count);
     switch(ep->type)
     {
-    case TYPE_CONTROL:
-	break;
-    case TYPE_BULK:
-	retval = usb_bulk_msg(uframe_dev.udev,
-			      usb_rcvbulkpipe(uframe_dev.udev, ep->epaddr),
-			      ep->data,
-			      min(ep->buffer_size, (int) count),
-			      (int *) &count, HZ*10);
-	break;
-    case TYPE_INTERRUPT:
-	retval = usb_interrupt_msg(uframe_dev.udev,
-			     usb_rcvintpipe(uframe_dev.udev, ep->epaddr),
-				   ep->data,
-				   min(ep->buffer_size,(int) count),
-				   (int *) &count, HZ*10);
-	break;
+		case TYPE_CONTROL:
+			break;
+		case TYPE_BULK:
+			retval = usb_bulk_msg(uframe_dev.udev
+									,usb_rcvbulkpipe(uframe_dev.udev, ep->epaddr)
+									,ep->data
+									,d_size
+									,(int *) &count, HZ*10);
+			break;
+		case TYPE_INTERRUPT:
+			retval = usb_interrupt_msg(uframe_dev.udev
+										,usb_rcvintpipe(uframe_dev.udev
+										,ep->epaddr)
+										,ep->data
+										,d_size
+										,(int *) &count, HZ*10);
+			break;
     }
 
-    printk(KERN_INFO "%s: read Data %s\n",DEVICE_NAME,ep->data);
-    /* if the read was successful, copy the data to userspace */
-    if (!retval)
-    {
-	printk(KERN_INFO "%s: Copying buffer to user\n",DEVICE_NAME);
-	if (copy_to_user(buff, ep->data, min(ep->buffer_size,(int) count)))
+	printk(KERN_INFO "%s: attempt %d : read Data %s\n",DEVICE_NAME, counter,ep->data);
+	/* if the read was successful, copy the data to userspace */
+	if (!retval)
 	{
-	    printk(KERN_ERR"%s: Error Copying data to user\n",DEVICE_NAME);
-	    retval = -EFAULT;
+		printk(KERN_INFO "%s: attempt %d : Copying buffer to user\n",DEVICE_NAME, counter);
+		if (copy_to_user(u_buffer, ep->data, d_size))
+		{
+			printk(KERN_ERR"%s: attempt %d : Error Copying data to user\n",DEVICE_NAME, counter);
+			retval = -EFAULT;
+		}
+		else
+			retval = d_size;
 	}
-	else
-	    retval = min(ep->buffer_size,(int) count);
-    }
-    return retval;
+	printk(KERN_INFO "%s: attempt %d : --------------done transfer--------------\n", DEVICE_NAME, counter);
+	counter++;
+	return retval;
 
 }
 
@@ -128,9 +133,15 @@ ssize_t uframe_write(struct file *filp, const char __user *u_buffer, size_t fram
 				d_buffer[i] = k_buffer[i + offset];
 			}
 
-			retval = usb_control_msg(uframe_dev.udev, usb_sndctrlpipe(uframe_dev.udev,ep->epaddr),
-						 cparams->request, cparams->request_type, cparams->value, cparams->index,
-						 d_buffer, cparams->size, HZ *10);
+			retval = usb_control_msg(uframe_dev.udev
+										,usb_sndctrlpipe(uframe_dev.udev,ep->epaddr)
+										,cparams->request
+										,cparams->request_type
+										,cparams->value
+										,cparams->index
+										,d_buffer
+										,cparams->size
+										,HZ *10);
 			break;
 	    case TYPE_BULK:
 			printk(KERN_INFO "%s: attempt %d : bulk type\n", DEVICE_NAME, counter);
@@ -165,7 +176,7 @@ long uframe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     cparams = kmalloc(sizeof(struct control_params),GFP_KERNEL);
     retval = 0;
     ep = filp->private_data;    
-    printk(KERN_INFO"%s : attempt %d : IOCTL From endpoint %d, type %d, dir %d\n", DEVICE_NAME, counter, ep->epaddr, ep->type, ep->dir);
+    printk(KERN_INFO"%s: attempt %d : IOCTL From endpoint %d, type %d, dir %d\n", DEVICE_NAME, counter, ep->epaddr, ep->type, ep->dir);
 
     switch(cmd)
     {
@@ -182,13 +193,24 @@ long uframe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		case IOCTL_CONTROL_READ:
 			printk(KERN_INFO"IOCTL control read %d", IOCTL_CONTROL_READ);
-			if(copy_from_user(cparams, (struct control_params __user*) arg, sizeof(struct control_params)))
+			if(copy_from_user(cparams, (struct control_params __user*) arg, sizeof(cparams)))
 				return -EFAULT;
-
+			
+			printk(KERN_INFO"%s: attempt %d : request %d request_type %d value %d index %d size %d",DEVICE_NAME,  counter, 
+			       cparams->request, cparams->request_type, cparams->value, cparams->index, cparams->size);
+			
 			data = kmalloc(cparams->size,GFP_KERNEL);
-			retval = usb_control_msg(uframe_dev.udev, usb_rcvctrlpipe(uframe_dev.udev,ep->epaddr),
-			cparams->request, cparams->request_type, cparams->value, cparams->index,
-			data,cparams->size, HZ *10);
+
+			printk(KERN_INFO"%s", data);
+			retval = usb_control_msg(uframe_dev.udev
+										,usb_rcvctrlpipe(uframe_dev.udev,ep->epaddr)
+										,cparams->request
+										,cparams->request_type
+										,cparams->value
+										,cparams->index
+										,data
+										,cparams->size
+										,HZ *10);
 			if(retval < 0)
 			{
 				printk(KERN_ERR"%s: couldn't control message to read\n",DEVICE_NAME);
@@ -200,6 +222,7 @@ long uframe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				return -EFAULT;
 			}
 
+			printk(KERN_INFO"%s", data);
 			break;
 
 		case IOCTL_ENDPOINTS_DESC:
