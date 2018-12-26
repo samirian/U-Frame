@@ -83,24 +83,3 @@ class USB:
 		
 	def readControl(self, request, requestType, value, index, size, data):
 		return self.comm.recive(CONTROL, 0, request, requestType, value, index, size, data)
-	
-	
-def callback1(data):
-	print (data)
-	print('-----------------------')
-
-
-def callback2(data):
-	print("1")
-
-
-if __name__ == "__main__":
-	usb = USB('17ef', '6078', '0')
-	#usb.writeBulk(OUT15, 8, 65)
-	#print(usb.readBulk(IN1))
-	thread1 = usb.readInterruptHandler(IN1, callBackFunction = callback1)
-	#thread2 = usb.readInterruptHandler(IN1, callBackFunction = callback2)
-	#for i in range(10000000):
-	#	print(usb.readInterrupt(IN1))
-
-	time.sleep(2)

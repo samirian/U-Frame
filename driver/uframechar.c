@@ -6,7 +6,7 @@
 #include <linux/usb.h>
 #include <linux/types.h>
 #include <linux/slab.h>
-
+#include <linux/time.h>
 #include "uframe.h"
 #include "uframechar.h"
 
@@ -18,6 +18,7 @@ struct control_params {
     uint16_t size;
 };
 
+static uint16_t counter=0;
 int uframe_open(struct inode *inode, struct file *filp)
 {
     struct uframe_endpoint *ep;
@@ -104,8 +105,8 @@ ssize_t uframe_write(struct file *filp, const char __user *u_buffer, size_t fram
 	retval = 0;
 	ep = filp->private_data;   
 
-	printk(KERN_INFO"%s: WRITE From endpoint %d, type %d, dir %d\n",DEVICE_NAME,ep->epaddr, ep->type, ep->dir);
-
+	printk(KERN_INFO"%s: attempt %d : WRITE From endpoint %d, type %d, dir %d\n",DEVICE_NAME, counter, ep->epaddr, ep->type, ep->dir);
+	printk(KERN_INFO "%s: attempt %d : --------------starting transfer--------------\n", DEVICE_NAME, counter);
     if (!frame_len)
 		return 0;
     
@@ -115,33 +116,33 @@ ssize_t uframe_write(struct file *filp, const char __user *u_buffer, size_t fram
     switch(ep->type)
     {
 	    case TYPE_CONTROL:
-			printk(KERN_INFO "%s: control type\n", DEVICE_NAME);
+			printk(KERN_INFO "%s: attempt %d : control type\n", DEVICE_NAME, counter);
 			cparams = (struct control_params *) u_buffer;
-			offset = sizeof(cparams);
 
-			d_buffer = kmalloc( (size_t)cparams->size,GFP_KERNEL );
+			printk(KERN_INFO"%s: attempt %d : request %d request_type %d value %d index %d size %d",DEVICE_NAME,  counter, 
+			       cparams->request, cparams->request_type, cparams->value, cparams->index, cparams->size);
+
+			d_buffer = kmalloc(cparams->size,GFP_KERNEL);
+			offset = sizeof(cparams);
 			for(i = 0 ; i < cparams->size ; i++){
 				d_buffer[i] = k_buffer[i + offset];
 			}
-
-			printk(KERN_INFO "%s: request %d request_type %d value %d index %d size %d",DEVICE_NAME,
-			       cparams->request, cparams->request_type, cparams->value, cparams->index, cparams->size);
 
 			retval = usb_control_msg(uframe_dev.udev, usb_sndctrlpipe(uframe_dev.udev,ep->epaddr),
 						 cparams->request, cparams->request_type, cparams->value, cparams->index,
 						 d_buffer, cparams->size, HZ *10);
 			break;
 	    case TYPE_BULK:
+			printk(KERN_INFO "%s: attempt %d : bulk type\n", DEVICE_NAME, counter);
 			retval = usb_bulk_msg(uframe_dev.udev, usb_sndbulkpipe(uframe_dev.udev, ep->epaddr), k_buffer, (int) frame_len, (int *) &frame_len, HZ*10);
 			break;
 	    case TYPE_INTERRUPT:
-			retval = usb_interrupt_msg(uframe_dev.udev,
-						   usb_sndintpipe(uframe_dev.udev, ep->epaddr),
-						   k_buffer,
-						   (int) frame_len,
-						   (int *) &frame_len, HZ*10);
+			printk(KERN_INFO "%s: attempt %d : interrupt type\n", DEVICE_NAME, counter);
+			retval = usb_interrupt_msg(uframe_dev.udev, usb_sndintpipe(uframe_dev.udev, ep->epaddr), k_buffer, (int) frame_len, (int *) &frame_len, HZ*10);
 		break;
     }
+	printk(KERN_INFO "%s: attempt %d : --------------done transfer--------------\n", DEVICE_NAME, counter);
+    counter++;
     return frame_len;
 }
 
@@ -164,7 +165,7 @@ long uframe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     cparams = kmalloc(sizeof(struct control_params),GFP_KERNEL);
     retval = 0;
     ep = filp->private_data;    
-    printk(KERN_INFO"%s: IOCTL From endpoint %d, type %d, dir %d\n",DEVICE_NAME,ep->epaddr, ep->type, ep->dir);
+    printk(KERN_INFO"%s : attempt %d : IOCTL From endpoint %d, type %d, dir %d\n", DEVICE_NAME, counter, ep->epaddr, ep->type, ep->dir);
 
     switch(cmd)
     {
