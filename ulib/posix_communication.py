@@ -7,7 +7,7 @@ import threading
 import time
 from helper import Helper
 from config import *
-from constants import *
+from .constants import *
 
 
 class Communication:

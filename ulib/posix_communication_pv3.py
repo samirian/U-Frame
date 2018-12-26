@@ -73,9 +73,11 @@ class communication:
 		messege = bytearray()
 		if os.path.exists(fd):
 			if request != None:
-				messege = bytearray(self.formRequestPacket(request, requestType, value, index, size))
+				for byte in self.formRequestPacket(request, requestType, value, index, size):
+					messege.append(byte)
 			if data != None:
-				messege.append(data)
+				for i in range(size):
+					messege.append(data[i])
 			file = open(fd, "wb")
 			print(messege)
 			file.write(messege)
@@ -90,4 +92,8 @@ class communication:
 		return self.root + endPoint + "/" + "{0:03}".format(IOn)
 		
 	def formRequestPacket(self, request, requestType, value, index, size):
-		return bitarray("{0:08b}".format(request) + "{0:08b}".format(requestType) + "{0:<016b}".format(value) + "{0:<016b}".format(index) + "{0:<016b}".format(size)).tobytes()
+		b_size = bytearray()
+		temp = bitarray("{0:016b}".format(size)).tobytes()
+		b_size.append(temp[1])
+		b_size.append(temp[0])
+		return bitarray("{0:08b}".format(request) + "{0:08b}".format(requestType) + "{0:<016b}".format(value) + "{0:<016b}".format(index) + "{0:08b}".format(b_size[0]) + "{0:08b}".format(b_size[1])).tobytes()

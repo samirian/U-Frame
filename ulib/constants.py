@@ -11,6 +11,8 @@ ISOCHRONOUS = "Isochronous"
 # 1 -> IN endpoint
 # 0 -> OUT endpoint
 
+IOCTL_INTERRUPT_INTERVAL = 0
+IOCTL_INTERRUPT_LENGTH = 0
 
 IN0 = 1
 IN1 = 11

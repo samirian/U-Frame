@@ -18,7 +18,6 @@ struct control_params {
     uint16_t size;
 };
 
-
 int uframe_open(struct inode *inode, struct file *filp)
 {
     struct uframe_endpoint *ep;
@@ -92,55 +91,58 @@ ssize_t uframe_read(struct file *filp, char __user *buff, size_t count, loff_t *
 }
 
 
-ssize_t uframe_write(struct file *filp, const char __user *buff, size_t count, loff_t *offp)
+ssize_t uframe_write(struct file *filp, const char __user *u_buffer, size_t frame_len, loff_t *offp)
 {
-    struct uframe_endpoint *ep;
-    int retval;
-    char *buf;
-    struct control_params *cparams;
-    buf = kmalloc(count,GFP_KERNEL);
-    retval = 0;
-    ep = filp->private_data;    
-    printk(KERN_INFO"%s: WRITE From endpoint %d, type %d, dir %d\n",DEVICE_NAME,ep->epaddr, ep->type, ep->dir);
+	struct uframe_endpoint *ep;
+	int retval;
+	char *k_buffer;
+	char *d_buffer;
+	struct control_params *cparams;
+	size_t offset;
+	size_t i;
+	k_buffer = kmalloc(frame_len,GFP_KERNEL);
+	retval = 0;
+	ep = filp->private_data;   
 
-    if (!count)
-	return 0;
+	printk(KERN_INFO"%s: WRITE From endpoint %d, type %d, dir %d\n",DEVICE_NAME,ep->epaddr, ep->type, ep->dir);
+
+    if (!frame_len)
+		return 0;
     
-    if (copy_from_user(buf, buff, count))
-	return -EFAULT;
+    if (copy_from_user(k_buffer, u_buffer, frame_len))
+		return -EFAULT;
      	
     switch(ep->type)
     {
-    case TYPE_CONTROL:
-	printk(KERN_INFO "%s: control type\n", DEVICE_NAME);
-	cparams = (struct control_params *) buf;
-	buf = buf + sizeof(struct control_params);
-	printk(KERN_INFO "%s: request %d request_type %d value %d index %d size %d data %s\n",DEVICE_NAME,
-	       cparams->request, cparams->request_type, cparams->value, cparams->index,cparams->size, buf);
-   
-	retval = usb_control_msg(uframe_dev.udev, usb_sndctrlpipe(uframe_dev.udev,ep->epaddr),
-				 cparams->request, cparams->request_type, cparams->value, cparams->index,
-				 buf,cparams->size, HZ *10);	    
+	    case TYPE_CONTROL:
+			printk(KERN_INFO "%s: control type\n", DEVICE_NAME);
+			cparams = (struct control_params *) u_buffer;
+			offset = sizeof(cparams);
 
-	break;
-    case TYPE_BULK:
-	retval = usb_bulk_msg(uframe_dev.udev,
-			      usb_sndbulkpipe(uframe_dev.udev, ep->epaddr),
-			      buf,
-			      (int) count,
-			      (int *) &count, HZ*10);
-	break;
-    case TYPE_INTERRUPT:
-	retval = usb_interrupt_msg(uframe_dev.udev,
-				   usb_sndintpipe(uframe_dev.udev, ep->epaddr),
-				   buf,
-				   (int) count,
-				   (int *) &count, HZ*10);
-	break;
+			d_buffer = kmalloc( (size_t)cparams->size,GFP_KERNEL );
+			for(i = 0 ; i < cparams->size ; i++){
+				d_buffer[i] = k_buffer[i + offset];
+			}
+
+			printk(KERN_INFO "%s: request %d request_type %d value %d index %d size %d",DEVICE_NAME,
+			       cparams->request, cparams->request_type, cparams->value, cparams->index, cparams->size);
+
+			retval = usb_control_msg(uframe_dev.udev, usb_sndctrlpipe(uframe_dev.udev,ep->epaddr),
+						 cparams->request, cparams->request_type, cparams->value, cparams->index,
+						 d_buffer, cparams->size, HZ *10);
+			break;
+	    case TYPE_BULK:
+			retval = usb_bulk_msg(uframe_dev.udev, usb_sndbulkpipe(uframe_dev.udev, ep->epaddr), k_buffer, (int) frame_len, (int *) &frame_len, HZ*10);
+			break;
+	    case TYPE_INTERRUPT:
+			retval = usb_interrupt_msg(uframe_dev.udev,
+						   usb_sndintpipe(uframe_dev.udev, ep->epaddr),
+						   k_buffer,
+						   (int) frame_len,
+						   (int *) &frame_len, HZ*10);
+		break;
     }
-    if(!retval)
-	retval = count;
-    return retval;
+    return frame_len;
 }
 
 struct __ep_desc {
@@ -166,52 +168,55 @@ long uframe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
     switch(cmd)
     {
-    case IOCTL_INTERRUPT_INTERVAL:
-	if(ep->type == TYPE_INTERRUPT)
-	{
-	    if(copy_to_user((int __user *) arg, &ep->interval, sizeof(int)))
-	       return -EFAULT;
+		case IOCTL_INTERRUPT_INTERVAL:
+			printk(KERN_INFO"IOCTL interrupt interval %d", IOCTL_INTERRUPT_INTERVAL);
+			if(ep->type == TYPE_INTERRUPT)
+			{
+				if(copy_to_user((int __user *) arg, &ep->interval, sizeof(int)))
+					return -EFAULT;
 
-	 }else
-	      return -ENOTTY;
-	    break;
+			}else
+				return -ENOTTY;
+			break;
 
-    case IOCTL_CONTROL_READ:
-	if(copy_from_user(cparams, (struct control_params __user*) arg, sizeof(struct control_params)))
-	    return -EFAULT;
+		case IOCTL_CONTROL_READ:
+			printk(KERN_INFO"IOCTL control read %d", IOCTL_CONTROL_READ);
+			if(copy_from_user(cparams, (struct control_params __user*) arg, sizeof(struct control_params)))
+				return -EFAULT;
 
-	data = kmalloc(cparams->size,GFP_KERNEL);
-	retval = usb_control_msg(uframe_dev.udev, usb_rcvctrlpipe(uframe_dev.udev,ep->epaddr),
-				 cparams->request, cparams->request_type, cparams->value, cparams->index,
-				 data,cparams->size, HZ *10);
-	if(retval < 0)
-	{
-	    printk(KERN_ERR"%s: couldn't control message to read\n",DEVICE_NAME);
-	    return retval;
-	}
-	if(cparams->size)
-	{
-	    if(copy_to_user((char __user*) (arg + sizeof(struct control_params)), data, cparams->size))
-	       return -EFAULT;
-	}
-	
-	break;
+			data = kmalloc(cparams->size,GFP_KERNEL);
+			retval = usb_control_msg(uframe_dev.udev, usb_rcvctrlpipe(uframe_dev.udev,ep->epaddr),
+			cparams->request, cparams->request_type, cparams->value, cparams->index,
+			data,cparams->size, HZ *10);
+			if(retval < 0)
+			{
+				printk(KERN_ERR"%s: couldn't control message to read\n",DEVICE_NAME);
+				return retval;
+			}
+			if(cparams->size)
+			{
+				if(copy_to_user((char __user*) (arg + sizeof(struct control_params)), data, cparams->size))
+				return -EFAULT;
+			}
 
-    case IOCTL_ENDPOINTS_DESC:
-        _ep_desc.type = ep->type;
-	_ep_desc.interval = ep->interval;
-	_ep_desc.dir = ep->dir;
-	_ep_desc.epaddr = ep->epaddr;
-	_ep_desc.buffer_size = ep->buffer_size;
-	printk(KERN_INFO"%s: endpoints type %d interval %d dir %d epaddr %d size %d \n",DEVICE_NAME, _ep_desc.type,
-	       _ep_desc.interval, _ep_desc.dir, _ep_desc.epaddr, _ep_desc.buffer_size);
-	if(copy_to_user((struct __ep_desc  __user *) arg, &_ep_desc, sizeof(struct __ep_desc))) 
-	    return -EFAULT;
-       
-	retval = 0;
-	break;
-    default: // not defined
-	return -ENOTTY;
+			break;
+
+		case IOCTL_ENDPOINTS_DESC:
+			printk(KERN_INFO"IOCTL interrupt interval %d", IOCTL_ENDPOINTS_DESC);
+			_ep_desc.type = ep->type;
+			_ep_desc.interval = ep->interval;
+			_ep_desc.dir = ep->dir;
+			_ep_desc.epaddr = ep->epaddr;
+			_ep_desc.buffer_size = ep->buffer_size;
+			printk(KERN_INFO"%s: endpoints type %d interval %d dir %d epaddr %d size %d \n",DEVICE_NAME, _ep_desc.type,
+			_ep_desc.interval, _ep_desc.dir, _ep_desc.epaddr, _ep_desc.buffer_size);
+			if(copy_to_user((struct __ep_desc  __user *) arg, &_ep_desc, sizeof(struct __ep_desc))) 
+				return -EFAULT;
+
+			retval = 0;
+			break;
+			default: // not defined
+			return -ENOTTY;
     }
 	return retval;
 }

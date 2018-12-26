@@ -1,19 +1,32 @@
-from .Communication import communication
 import threading
 import time
 from .constants import *
 
-IOCTL_INTERRUPT_INTERVAL = 0
-IOCTL_INTERRUPT_LENGTH = 0
-
+import os
+import sys
 
 class USB:
 	def __init__(self, vid, pid, interface):
-
 		self.vid = vid
 		self.pid = pid
 		self.interface = interface
-		self.comm = communication(vid, pid, interface)
+		Python_version = sys.version_info[0]
+		OS_name = os.name
+		print("OS : " + OS_name)
+		print("python version : " + str(Python_version))
+		if Python_version == 3:
+			if OS_name == "posix":
+				from . import posix_communication_pv3 as communication
+			else:
+				raise Exception("only linux systems are supported now, we intend to support other systems soon.")
+		elif Python_version == 2:
+			if OS_name == "posix":
+				from . import posix_communication_pv3 as communication
+			else:
+				raise Exception("only linux systems are supported now, we intend to support other systems soon.")
+		else:
+			raise Exception("only python 2 and python 3 are supported.")
+		self.comm = communication.communication(vid, pid, interface)
 		#self.interruptInterval = self.comm.ioctl(vid, pid, interface, 0, 0, 0, 0, 0, 0, IN0, IOCTL_INTERRUPT_INTERVAL)
 		self.interruptInterval = 500
 
@@ -66,7 +79,7 @@ class USB:
 
 
 	def writeControl(self, request, requestType, value, index, size, data = None):
-		self.comm.send(CONTROL, 1, request, requestType, value, index, size, data)
+		self.comm.send(CONTROL, 0, request, requestType, value, index, size, data)
 		
 	def readControl(self, request, requestType, value, index, size, data):
 		return self.comm.recive(CONTROL, 0, request, requestType, value, index, size, data)
