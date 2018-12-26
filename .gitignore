@@ -4,3 +4,5 @@
 driver/deviceDiscriptor\.txt
 
 driver/endpoints\.txt
+
+driver/uframe\.h
