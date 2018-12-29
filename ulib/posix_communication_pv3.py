@@ -60,12 +60,11 @@ class communication:
 			byteBuffer = bytearray(self.formRequestPacket(request, requestType, value, index, size))
 			for d in data :
 				byteBuffer.append(d)
-			print(byteBuffer)
 			#tempBuffer = array.array("B", byteBuffer)
 			#buffer = array.array("c", tempBuffer.tostring())
 			fcntl.ioctl(file, operation, byteBuffer, 1)
 			file.close()
-			return byteBuffer
+			return byteBuffer[8:]
 				
 				
 	def send(self, endPoint, OUTn, request = None, requestType = None, value = None, index = None, size = None, data = None):
@@ -79,21 +78,34 @@ class communication:
 				for i in range(size):
 					messege.append(data[i])
 			file = open(fd, "wb")
-			print(messege)
 			file.write(messege)
 			file.close()
 		
 		else:
 			print("no such endpoint ,printing available nodes :")
 			self.availableEndpoints(endPoint)
+		return messege
 			
 		
 	def getPath(self, endPoint, IOn):
 		return self.root + endPoint + "/" + "{0:03}".format(IOn)
-		
+	
+	def splitBytes(self, value):
+		least = (value & 0x00ff) 
+		most = (value & 0xff00) >> 8
+		return least, most	
+
 	def formRequestPacket(self, request, requestType, value, index, size):
-		b_size = bytearray()
-		temp = bitarray("{0:016b}".format(size)).tobytes()
-		b_size.append(temp[1])
-		b_size.append(temp[0])
-		return bitarray("{0:08b}".format(request) + "{0:08b}".format(requestType) + "{0:<016b}".format(value) + "{0:<016b}".format(index) + "{0:08b}".format(b_size[0]) + "{0:08b}".format(b_size[1])).tobytes()
+		packet = bytearray()
+		packet.append(request)
+		packet.append(requestType)
+		least, most = self.splitBytes(value)
+		packet.append(least)
+		packet.append(most)
+		least, most = self.splitBytes(index)
+		packet.append(least)
+		packet.append(most)
+		least, most = self.splitBytes(size)
+		packet.append(least)
+		packet.append(most)
+		return packet

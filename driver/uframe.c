@@ -37,19 +37,19 @@ static void setup_cdev(struct cdev * ,int );
 
 struct file_operations uframe_fops = 
 {
-    .owner = THIS_MODULE,
-    .read = uframe_read,
-    .write = uframe_write,
-    .open = uframe_open,
-    .release = uframe_release,
+    .owner          = THIS_MODULE,
+    .read           = uframe_read,
+    .write          = uframe_write,
+    .open           = uframe_open,
+    .release        = uframe_release,
     .unlocked_ioctl = uframe_ioctl,
 };
 
 static struct usb_driver uframe_driver =
 {
-    .name = DEVICE_NAME,
-    .id_table = usb_table,
-    .probe = uframe_probe,
+    .name       = DEVICE_NAME,
+    .id_table   = usb_table,
+    .probe      = uframe_probe,
     .disconnect = uframe_disconnect,
 };
 

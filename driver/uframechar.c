@@ -141,7 +141,7 @@ ssize_t uframe_write(struct file *filp, const char __user *u_buffer, size_t fram
 										,cparams->index
 										,d_buffer
 										,cparams->size
-										,HZ *10);
+										,0);
 			break;
 	    case TYPE_BULK:
 			printk(KERN_INFO "%s: attempt %d : bulk type\n", DEVICE_NAME, counter);
@@ -200,8 +200,6 @@ long uframe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			       cparams->request, cparams->request_type, cparams->value, cparams->index, cparams->size);
 			
 			data = kmalloc(cparams->size,GFP_KERNEL);
-
-			printk(KERN_INFO"%s", data);
 			retval = usb_control_msg(uframe_dev.udev
 										,usb_rcvctrlpipe(uframe_dev.udev,ep->epaddr)
 										,cparams->request
@@ -210,7 +208,7 @@ long uframe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 										,cparams->index
 										,data
 										,cparams->size
-										,HZ *10);
+										,0);
 			if(retval < 0)
 			{
 				printk(KERN_ERR"%s: couldn't control message to read\n",DEVICE_NAME);
