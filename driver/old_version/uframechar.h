@@ -5,6 +5,15 @@
 #define IOCTL_CONTROL_READ 1
 #define IOCTL_ENDPOINTS_DESC 3
 
+#define  DEVICE_NAME "uframe"
+
+#define TYPE_CONTROL 0
+#define TYPE_BULK 1
+#define TYPE_INTERRUPT 2
+
+#define DIR_IN 0
+#define DIR_OUT 1
+
 ssize_t uframe_write(struct file *, const char __user *, size_t , loff_t *);
 ssize_t uframe_read(struct file *, char __user *, size_t , loff_t *);
 int uframe_release(struct inode *node, struct file *filp);

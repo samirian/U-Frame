@@ -29,7 +29,7 @@ device_counter = 0
 
 os.system("lsusb > lsusb.txt")
 
-file = open('uframe.h', 'r')
+file = open('udriver.h', 'r')
 data = file.readlines()
 file.close()
 
@@ -47,9 +47,9 @@ for dev in devicesArray:
 appended_part.append('};\n')
 
 file = open('uframe.h', 'w')
-file.write("".join(data[0:22]))
+file.write("".join(data[0:76]))
 file.write("".join(appended_part))
-file.write("".join(data[27:]))
+file.write("".join(data[81:]))
 file.close()
 
 os.system("make")

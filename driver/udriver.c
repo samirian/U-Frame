@@ -10,9 +10,7 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/time.h>
-
-#include "uframe.h"
-#include "uframechar.h"
+#include "udriver.h"
 
  
 MODULE_LICENSE("GPL");          
@@ -20,24 +18,6 @@ MODULE_AUTHOR("Mahmoud Nagy");
 MODULE_DESCRIPTION("A generic kernel driver for UFrame"); 
 MODULE_VERSION("0.5");     
 
-
-int uframe_major;
-int uframe_minor;
-
-/*
-struct uframeDeviceDiscriptor uframe_dev_dis[] = {
-
-}
-*/
-static int devices_count = 0;
-
-dev_t uframe_devno;
-
-static int findDeviceIndexByDevice(struct usb_device *device);
-static int uframe_probe(struct usb_interface *interface, const struct usb_device_id *id);
-static void uframe_disconnect(struct usb_interface *interface);
-    
-static void setup_cdev(struct cdev * ,int );
 
 struct file_operations uframe_fops = 
 {
@@ -56,12 +36,6 @@ static struct usb_driver uframe_driver =
     .probe      = uframe_probe,
     .disconnect = uframe_disconnect,
 };
-
-void uframe_delete(struct kref *krf)
-{	
-    struct uframe_endpoint *ep = container_of(krf, struct uframe_endpoint, kref);
-    kfree (ep->data); //free data allocated
-}
 
 //good
 static int __init uframe_init(void)
@@ -97,7 +71,6 @@ static int __init uframe_init(void)
     return 0;
 }
 
-//good
 static void __exit uframe_exit(void)
 {  
     printk(KERN_WARNING"%s : life is not fair!.", DEVICE_NAME);
@@ -235,27 +208,8 @@ static void setup_cdev(struct cdev *dev ,int minor)
 	   printk(KERN_NOTICE "%s: Error %d adding node%d", DEVICE_NAME, err, minor);
 }
 
-int findDeviceIndexByDevice(struct usb_device *device){
-    int i;
-    for(i = 0 ; i < devCnt ;i++){
-        if(uframe_devices[i].VID == device->descriptor.idVendor && uframe_devices[i].PID == device->descriptor.idProduct)
-            return i;
-    }
-    return -1;
-}
-
 module_init(uframe_init);
 module_exit(uframe_exit);
-
-struct control_params {
-    uint8_t request;
-    uint8_t request_type;
-    uint16_t value;
-    uint16_t index;
-    uint16_t size;
-};
-
-static int findDeviceIndexByMinor(int minor);
 
 int uframe_open(struct inode *inode, struct file *filp)
 {
@@ -340,7 +294,6 @@ ssize_t uframe_read(struct file *filp, char __user *u_buffer, size_t count, loff
 
 }
 
-
 ssize_t uframe_write(struct file *filp, const char __user *u_buffer, size_t frame_len, loff_t *offp)
 {
     struct uframe_endpoint *endpoint;
@@ -407,14 +360,6 @@ ssize_t uframe_write(struct file *filp, const char __user *u_buffer, size_t fram
     printk(KERN_INFO "%s: device : --------------done transfer--------------\n", DEVICE_NAME);
     return frame_len;
 }
-
-struct __endpoint_desc {
-    int type; 
-    int dir;
-    int endpointaddr;
-    int interval;
-    int buffer_size; 
-};
 
 long uframe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
@@ -511,6 +456,21 @@ long uframe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
     printk(KERN_INFO"reched");
     return retval;
+}
+
+void uframe_delete(struct kref *krf)
+{   
+    struct uframe_endpoint *ep = container_of(krf, struct uframe_endpoint, kref);
+    kfree (ep->data); //free data allocated
+}
+
+int findDeviceIndexByDevice(struct usb_device *device){
+    int i;
+    for(i = 0 ; i < devCnt ;i++){
+        if(uframe_devices[i].VID == device->descriptor.idVendor && uframe_devices[i].PID == device->descriptor.idProduct)
+            return i;
+    }
+    return -1;
 }
 
 int findDeviceIndexByMinor(int minor){
